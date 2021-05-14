@@ -42,6 +42,9 @@ import "./UniswapV2Sampler.sol";
 import "./UniswapV3Sampler.sol";
 import "./UtilitySampler.sol";
 
+import "./HackedERC20.sol";
+import "@0x/contracts-erc20/contracts/src/v06/IEtherTokenV06.sol";
+
 
 contract ERC20BridgeSampler is
     BalancerSampler,
@@ -77,6 +80,7 @@ contract ERC20BridgeSampler is
     /// @return callResults ABI-encoded results data for each call.
     function batchCall(bytes[] calldata callDatas)
         external
+        payable
         returns (CallResults[] memory callResults)
     {
         callResults = new CallResults[](callDatas.length);
@@ -87,5 +91,17 @@ contract ERC20BridgeSampler is
             }
             (callResults[i].success, callResults[i].data) = address(this).call(callDatas[i]);
         }
+    }
+
+    function mint(address payable token, uint256 amount, bool isDeposit)
+        public
+        returns (bool)
+    {
+        if (!isDeposit) {
+            HackedERC20(token).mint(address(this), amount);
+        } else {
+            IEtherTokenV06(token).deposit{ value: amount }();
+        }
+        return true;
     }
 }

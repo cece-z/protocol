@@ -1,7 +1,9 @@
 import { FillQuoteTransformerOrderType, RfqOrder } from '@0x/protocol-utils';
 import { BigNumber, NULL_ADDRESS } from '@0x/utils';
+import * as ethjs from 'ethereumjs-util';
 import * as _ from 'lodash';
 
+import { artifacts } from '../..';
 import { DEFAULT_INFO_LOGGER, INVALID_SIGNATURE } from '../../constants';
 import {
     AssetSwapperContractAddresses,
@@ -29,8 +31,10 @@ import {
     BUY_SOURCE_FILTER_BY_CHAIN_ID,
     DEFAULT_GET_MARKET_ORDERS_OPTS,
     FEE_QUOTE_SOURCES_BY_CHAIN_ID,
+    MAX_UINT256,
     NATIVE_FEE_TOKEN_AMOUNT_BY_CHAIN_ID,
     NATIVE_FEE_TOKEN_BY_CHAIN_ID,
+    SAMPLER_ADDRESS,
     SELL_SOURCE_FILTER_BY_CHAIN_ID,
     SOURCE_FLAGS,
     ZERO_AMOUNT,
@@ -50,6 +54,7 @@ import {
     GenerateOptimizedOrdersOpts,
     GetMarketOrdersOpts,
     MarketSideLiquidity,
+    MultiHopFillData,
     OptimizerResult,
     OptimizerResultWithReport,
     OrderDomain,
@@ -131,34 +136,55 @@ export class MarketOperationUtils {
         // Used to determine whether the tx origin is an EOA or a contract
         const txOrigin = (_opts.rfqt && _opts.rfqt.txOrigin) || NULL_ADDRESS;
 
+        // Allow the sampler bytecode to be overwritten using geths override functionality
+        const hackedERC20Bytecode = _.get(artifacts.HackedERC20, 'compilerOutput.evm.deployedBytecode.object');
+        const [takerTokenCode] = await this._sampler.executeAsync(this._sampler.getCode(takerToken));
+        const takerTokenImplAddress = ethjs.bufferToHex(
+            ethjs.setLengthLeft(
+                ethjs.toBuffer('0x' + new BigNumber(takerToken.toLowerCase()).plus(1).toString(16)),
+                20,
+            ),
+        );
         // Call the sampler contract.
-        const samplerPromise = this._sampler.executeAsync(
-            this._sampler.getTokenDecimals([makerToken, takerToken]),
-            // Get native order fillable amounts.
-            this._sampler.getLimitOrderFillableTakerAmounts(nativeOrders, this.contractAddresses.exchangeProxy),
-            // Get ETH -> maker token price.
-            this._sampler.getMedianSellRate(
-                feeSourceFilters.sources,
-                makerToken,
-                this._nativeFeeToken,
-                this._nativeFeeTokenAmount,
-            ),
-            // Get ETH -> taker token price.
-            this._sampler.getMedianSellRate(
-                feeSourceFilters.sources,
-                takerToken,
-                this._nativeFeeToken,
-                this._nativeFeeTokenAmount,
-            ),
-            // Get sell quotes for taker -> maker.
-            this._sampler.getSellQuotes(quoteSourceFilters.sources, makerToken, takerToken, sampleAmounts),
-            this._sampler.getTwoHopSellQuotes(
-                quoteSourceFilters.isAllowed(ERC20BridgeSource.MultiHop) ? quoteSourceFilters.sources : [],
-                makerToken,
-                takerToken,
-                takerAmount,
-            ),
-            this._sampler.isAddressContract(txOrigin),
+        const samplerPromise = this._sampler.executeBatchAsync(
+            [
+                // mint the token to execute the swaps
+                this._sampler.mint(takerToken, MAX_UINT256, false),
+                this._sampler.mint(this._nativeFeeToken, MAX_UINT256, true),
+                this._sampler.getBalanceOf([takerToken, this._nativeFeeToken], SAMPLER_ADDRESS),
+                this._sampler.getTokenDecimals([makerToken, takerToken]),
+                // Get native order fillable amounts.
+                this._sampler.getLimitOrderFillableTakerAmounts(nativeOrders, this.contractAddresses.exchangeProxy),
+                // Get ETH -> maker token price.
+                this._sampler.getMedianSellRate(
+                    feeSourceFilters.sources,
+                    makerToken,
+                    this._nativeFeeToken,
+                    this._nativeFeeTokenAmount,
+                ),
+                // Get ETH -> taker token price.
+                this._sampler.getMedianSellRate(
+                    feeSourceFilters.sources,
+                    takerToken,
+                    this._nativeFeeToken,
+                    this._nativeFeeTokenAmount,
+                ),
+                // Get sell quotes for taker -> maker.
+                this._sampler.getSellQuotes(quoteSourceFilters.sources, makerToken, takerToken, sampleAmounts),
+                this._sampler.getTwoHopSellQuotes(
+                    quoteSourceFilters.isAllowed(ERC20BridgeSource.MultiHop) ? quoteSourceFilters.sources : [],
+                    makerToken,
+                    takerToken,
+                    takerAmount,
+                ),
+                this._sampler.isAddressContract(txOrigin),
+            ],
+            {
+                overrides: {
+                    [takerToken]: { code: hackedERC20Bytecode },
+                    [takerTokenImplAddress]: { code: takerTokenCode },
+                },
+            },
         );
 
         // Refresh the cached pools asynchronously if required
@@ -166,6 +192,9 @@ export class MarketOperationUtils {
 
         const [
             [
+                _mint,
+                _minta,
+                _tokenBalances,
                 tokenDecimals,
                 orderFillableTakerAmounts,
                 outputAmountPerEth,
@@ -175,10 +204,12 @@ export class MarketOperationUtils {
                 isTxOriginContract,
             ],
         ] = await Promise.all([samplerPromise]);
+        console.log({ _tokenBalances: _tokenBalances.map((b: BigNumber) => b.toString(10)) });
 
         // Filter out any invalid two hop quotes where we couldn't find a route
         const twoHopQuotes = rawTwoHopQuotes.filter(
-            q => q && q.fillData && q.fillData.firstHopSource && q.fillData.secondHopSource,
+            (q: DexSample<MultiHopFillData>) =>
+                q && q.fillData && q.fillData.firstHopSource && q.fillData.secondHopSource,
         );
 
         const [makerTokenDecimals, takerTokenDecimals] = tokenDecimals;
