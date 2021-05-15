@@ -351,7 +351,10 @@ const makerPsmEncoder = AbiEncoder.create([
     { name: 'psmAddress', type: 'address' },
     { name: 'gemTokenAddress', type: 'address' },
 ]);
-const balancerV2Encoder = AbiEncoder.create([{ name: 'vault', type: 'address' }, { name: 'poolId', type: 'bytes32' }]);
+const balancerV2Encoder = AbiEncoder.create([
+    { name: 'vault', type: 'address' },
+    { name: 'poolId', type: 'bytes32' },
+]);
 const routerAddressPathEncoder = AbiEncoder.create('(address,address[])');
 const tokenAddressEncoder = AbiEncoder.create([{ name: 'tokenAddress', type: 'address' }]);
 
@@ -359,7 +362,7 @@ export const BRIDGE_ENCODERS: {
     [key in Exclude<
         ERC20BridgeSource,
         ERC20BridgeSource.Native | ERC20BridgeSource.MultiHop | ERC20BridgeSource.MultiBridge
-    >]: AbiEncoder.DataType
+    >]: AbiEncoder.DataType;
 } = {
     [ERC20BridgeSource.LiquidityProvider]: AbiEncoder.create([
         { name: 'provider', type: 'address' },
