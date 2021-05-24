@@ -450,3 +450,6 @@ export interface AltFirmQuoteResponse extends AltBaseRfqResponse {
     };
     status: 'active' | 'rejected';
 }
+
+export type Bytes = string;
+export type Address = Bytes;

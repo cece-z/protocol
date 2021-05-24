@@ -3,7 +3,10 @@ import { FillQuoteTransformerOrderType } from '@0x/protocol-utils';
 import { BigNumber } from '@0x/utils';
 import { formatBytes32String } from '@ethersproject/strings';
 
+import { UNISWAP_V3_GAS_SCHEDULE } from '../../sources/uniswap_v3';
+
 import { TokenAdjacencyGraphBuilder } from '../token_adjacency_graph_builder';
+import { valueByChainId } from '../utils';
 
 import { SourceFilters } from './source_filters';
 import {
@@ -24,7 +27,6 @@ import {
     PsmInfo,
     TokenAdjacencyGraph,
     UniswapV2FillData,
-    UniswapV3FillData,
 } from './types';
 
 // tslint:disable: custom-no-magic-numbers no-bitwise
@@ -40,21 +42,7 @@ export const ONE_HOUR_IN_SECONDS = 60 * 60;
 export const ONE_SECOND_MS = 1000;
 export const NULL_BYTES = '0x';
 export const NULL_ADDRESS = '0x0000000000000000000000000000000000000000';
-export const SAMPLER_ADDRESS = '0x5555555555555555555555555555555555555555';
 export const COMPARISON_PRICE_DECIMALS = 10;
-
-function valueByChainId<T>(rest: Partial<{ [key in ChainId]: T }>, defaultValue: T): { [key in ChainId]: T } {
-    // TODO I don't like this but iterating through enums is weird
-    return {
-        [ChainId.Mainnet]: defaultValue,
-        [ChainId.Ropsten]: defaultValue,
-        [ChainId.Rinkeby]: defaultValue,
-        [ChainId.Kovan]: defaultValue,
-        [ChainId.Ganache]: defaultValue,
-        [ChainId.BSC]: defaultValue,
-        ...(rest || {}),
-    };
-}
 
 /**
  * Valid sources for market sell.
@@ -1090,20 +1078,6 @@ export const BALANCER_TOP_POOLS_FETCHED = 250;
 export const BALANCER_MAX_POOLS_FETCHED = 3;
 export const BALANCER_V2_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-v2';
 
-export const UNISWAPV3_CONFIG_BY_CHAIN_ID = valueByChainId(
-    {
-        [ChainId.Mainnet]: {
-            quoter: '0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6',
-            router: '0xe592427a0aece92de3edee1f18e0157c05861564',
-        },
-        [ChainId.Ropsten]: {
-            quoter: '0x2f9e608fd881861b8916257b76613cb22ee0652c',
-            router: '0x03782388516e94fcd4c18666303601a12aa729ea',
-        },
-    },
-    { quoter: NULL_ADDRESS, router: NULL_ADDRESS },
-);
-
 //
 // BSC
 //
@@ -1336,14 +1310,7 @@ export const DEFAULT_GAS_SCHEDULE: Required<FeeSchedule> = {
         }
         return gas;
     },
-    [ERC20BridgeSource.UniswapV3]: (fillData?: FillData) => {
-        let gas = 160e3;
-        const path = (fillData as UniswapV3FillData).tokenAddressPath;
-        if (path.length > 2) {
-            gas += (path.length - 2) * 117e3; // +117k for each hop.
-        }
-        return gas;
-    },
+    [ERC20BridgeSource.UniswapV3]: UNISWAP_V3_GAS_SCHEDULE,
 };
 
 export const DEFAULT_FEE_SCHEDULE: Required<FeeSchedule> = { ...DEFAULT_GAS_SCHEDULE };

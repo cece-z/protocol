@@ -8,6 +8,7 @@ import { MarketOperation } from '@0x/types';
 import { BigNumber } from '@0x/utils';
 
 import { NativeOrderWithFillableAmounts, RfqFirmQuoteValidator, RfqRequestOpts } from '../../types';
+import { ERC20BridgeSource, DexSample, FillData } from '../../sources/types';
 import { QuoteRequestor } from '../../utils/quote_requestor';
 import { PriceComparisonsReport, QuoteReport } from '../quote_report_generator';
 
@@ -32,52 +33,6 @@ export enum AggregationError {
     NoBridgeForSource = 'NO_BRIDGE_FOR_SOURCE',
 }
 
-/**
- * DEX sources to aggregate.
- */
-export enum ERC20BridgeSource {
-    Native = 'Native',
-    Uniswap = 'Uniswap',
-    UniswapV2 = 'Uniswap_V2',
-    Eth2Dai = 'Eth2Dai',
-    Kyber = 'Kyber',
-    Curve = 'Curve',
-    LiquidityProvider = 'LiquidityProvider',
-    MultiBridge = 'MultiBridge',
-    Balancer = 'Balancer',
-    BalancerV2 = 'Balancer_V2',
-    Cream = 'CREAM',
-    Bancor = 'Bancor',
-    MakerPsm = 'MakerPsm',
-    MStable = 'mStable',
-    Mooniswap = 'Mooniswap',
-    MultiHop = 'MultiHop',
-    Shell = 'Shell',
-    Swerve = 'Swerve',
-    SnowSwap = 'SnowSwap',
-    SushiSwap = 'SushiSwap',
-    Dodo = 'DODO',
-    DodoV2 = 'DODO_V2',
-    CryptoCom = 'CryptoCom',
-    Linkswap = 'Linkswap',
-    KyberDmm = 'KyberDMM',
-    Smoothy = 'Smoothy',
-    Component = 'Component',
-    Saddle = 'Saddle',
-    XSigma = 'xSigma',
-    UniswapV3 = 'Uniswap_V3',
-    // BSC only
-    PancakeSwap = 'PancakeSwap',
-    PancakeSwapV2 = 'PancakeSwap_V2',
-    BakerySwap = 'BakerySwap',
-    Nerve = 'Nerve',
-    Belt = 'Belt',
-    Ellipsis = 'Ellipsis',
-    ApeSwap = 'ApeSwap',
-    CafeSwap = 'CafeSwap',
-    CheeseSwap = 'CheeseSwap',
-    JulSwap = 'JulSwap',
-}
 export type SourcesWithPoolsCache = ERC20BridgeSource.Balancer | ERC20BridgeSource.BalancerV2 | ERC20BridgeSource.Cream;
 
 // tslint:disable: enum-naming
@@ -131,21 +86,11 @@ export interface BalancerV2PoolInfo {
     vault: string;
 }
 
-// Internal `fillData` field for `Fill` objects.
-export interface FillData {}
-
 // `FillData` for native fills. Represents a single native order
 export type NativeRfqOrderFillData = FillQuoteTransformerRfqOrderInfo;
 export type NativeLimitOrderFillData = FillQuoteTransformerLimitOrderInfo;
 export type NativeFillData = NativeRfqOrderFillData | NativeLimitOrderFillData;
 
-// Represents an individual DEX sample from the sampler contract
-export interface DexSample<TFillData extends FillData = FillData> {
-    source: ERC20BridgeSource;
-    fillData: TFillData;
-    input: BigNumber;
-    output: BigNumber;
-}
 export interface CurveFillData extends FillData {
     fromTokenIdx: number;
     toTokenIdx: number;
@@ -216,12 +161,6 @@ export type MakerPsmFillData = FillData & MakerPsmExtendedData & PsmInfo;
 export interface HopInfo {
     sourceIndex: BigNumber;
     returnData: string;
-}
-
-export interface UniswapV3FillData extends FillData {
-    tokenAddressPath: string[];
-    router: string;
-    pathAmounts: Array<{ uniswapPath: string; inputAmount: BigNumber }>;
 }
 
 export interface KyberDmmFillData extends UniswapV2FillData {

@@ -1,3 +1,4 @@
+import { ChainId } from '@0x/contract-addresses';
 import { FillQuoteTransformerOrderType, RfqOrder } from '@0x/protocol-utils';
 import { BigNumber, NULL_ADDRESS } from '@0x/utils';
 import * as _ from 'lodash';
@@ -40,7 +41,8 @@ import { getBestTwoHopQuote } from './multihop_utils';
 import { createOrdersFromTwoHopSample } from './orders';
 import { PathPenaltyOpts } from './path';
 import { fillsToSortedPaths, findOptimalPathAsync } from './path_optimizer';
-import { DexOrderSampler, getSampleAmounts } from './sampler';
+import { DexOrderSampler } from './sampler';
+import { getSampleAmounts } from './sampler_utils';
 import { SourceFilters } from './source_filters';
 import {
     AggregationError,
@@ -101,11 +103,11 @@ export class MarketOperationUtils {
         private readonly contractAddresses: AssetSwapperContractAddresses,
         private readonly _orderDomain: OrderDomain,
     ) {
-        this._buySources = BUY_SOURCE_FILTER_BY_CHAIN_ID[_sampler.chainId];
-        this._sellSources = SELL_SOURCE_FILTER_BY_CHAIN_ID[_sampler.chainId];
-        this._feeSources = new SourceFilters(FEE_QUOTE_SOURCES_BY_CHAIN_ID[_sampler.chainId]);
-        this._nativeFeeToken = NATIVE_FEE_TOKEN_BY_CHAIN_ID[_sampler.chainId];
-        this._nativeFeeTokenAmount = NATIVE_FEE_TOKEN_AMOUNT_BY_CHAIN_ID[_sampler.chainId];
+        this._buySources = BUY_SOURCE_FILTER_BY_CHAIN_ID[_sampler.chain.chainId];
+        this._sellSources = SELL_SOURCE_FILTER_BY_CHAIN_ID[_sampler.chain.chainId];
+        this._feeSources = new SourceFilters(FEE_QUOTE_SOURCES_BY_CHAIN_ID[_sampler.chain.chainId]);
+        this._nativeFeeToken = NATIVE_FEE_TOKEN_BY_CHAIN_ID[_sampler.chain.chainId];
+        this._nativeFeeTokenAmount = NATIVE_FEE_TOKEN_AMOUNT_BY_CHAIN_ID[_sampler.chain.chainId];
     }
 
     /**

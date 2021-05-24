@@ -16,7 +16,7 @@ import {
 import { BigNumber } from '@0x/utils';
 import * as _ from 'lodash';
 
-import { constants, POSITIVE_SLIPPAGE_FEE_TRANSFORMER_GAS } from '../constants';
+import { constants, DUMMY_PROVIDER, POSITIVE_SLIPPAGE_FEE_TRANSFORMER_GAS } from '../constants';
 import {
     AffiliateFeeType,
     CalldataInfo,
@@ -76,12 +76,7 @@ const PANCAKE_SWAP_FORKS = [
     ERC20BridgeSource.CheeseSwap,
     ERC20BridgeSource.JulSwap,
 ];
-const FAKE_PROVIDER: any = {
-    sendAsync(): void {
-        return;
-    },
-};
-const DUMMY_WETH_CONTRACT = new WETH9Contract(NULL_ADDRESS, FAKE_PROVIDER);
+const DUMMY_WETH_CONTRACT = new WETH9Contract(NULL_ADDRESS, DUMMY_PROVIDER);
 
 export class ExchangeProxySwapQuoteConsumer implements SwapQuoteConsumerBase {
     public readonly chainId: ChainId;
@@ -101,8 +96,8 @@ export class ExchangeProxySwapQuoteConsumer implements SwapQuoteConsumerBase {
         assert.isNumber('chainId', chainId);
         this.chainId = chainId;
         this.contractAddresses = contractAddresses;
-        this._exchangeProxy = new IZeroExContract(contractAddresses.exchangeProxy, FAKE_PROVIDER);
-        this._multiplex = new MultiplexFeatureContract(contractAddresses.exchangeProxy, FAKE_PROVIDER);
+        this._exchangeProxy = new IZeroExContract(contractAddresses.exchangeProxy, DUMMY_PROVIDER);
+        this._multiplex = new MultiplexFeatureContract(contractAddresses.exchangeProxy, DUMMY_PROVIDER);
         this.transformerNonces = {
             wethTransformer: findTransformerNonce(
                 contractAddresses.transformers.wethTransformer,
